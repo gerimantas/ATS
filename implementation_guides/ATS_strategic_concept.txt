@@ -1,0 +1,112 @@
+
+### **Strategic Concept for an Automated Trading System (ATS)**
+
+#### **1. General Philosophy and Objective**
+
+This document defines the strategic concept for an Automated Trading System (ATS) aimed at generating trading signals on a centralized exchange (CEX) by using data from decentralized exchanges (DEX) as a leading indicator.
+
+The core of the strategy is **not** inter-exchange arbitrage. The system identifies predictive price movements originating from anomalies in DEX market microstructure (e.g., order flow imbalances, liquidity changes) and aims to open positions on the CEX before the broader market reacts.
+
+#### **2. System Architecture**
+
+The system operates in two sequential phases:
+
+* **Phase A: Data Accrual and Baseline Operation (Rule-Based)**
+    * **Objective:** To collect high-quality, labeled data and establish baseline performance metrics for the strategy.
+    * **Operating Principle:** Signals are generated based on clearly defined algorithms and thresholds. Automated trade execution is not mandatory during this phase.
+    * **Duration:** Until a minimum of 1,000 labeled signals are collected or after 3 months of active data gathering.
+
+* **Phase B: Predictive Modeling (ML-Powered)**
+    * **Objective:** To use the accrued data to train a machine learning (ML) model that will generate signals with a probabilistic score.
+    * **Operating Principle:** The hard-coded rules are replaced by an ML model that assigns a predicted profitability score (`reward_score`) to each potential signal. Trading decisions are based on this score.
+
+#### **3. Signal Generation Algorithms**
+
+The system utilizes several algorithms to detect market anomalies. A signal is considered strong if it is confirmed by multiple algorithms simultaneously.
+
+1.  **DEX Order Flow Imbalance:**
+    * Analyzes the volume of aggressive buy and sell trades over short time intervals (10-30 seconds) on a DEX. An anomalous, one-directional order flow is a primary signal trigger.
+2.  **DEX Liquidity Event Detection:**
+    * Captures sudden and significant changes in the liquidity pools of DEX trading pairs. The signal is triggered not by the absolute liquidity amount, but by the rate and acceleration of its change.
+3.  **Volume-Price Correlation Analysis:**
+    * Identifies situations where DEX trading volume increases significantly while the price moves minimally. This can indicate the formation of a large position by informed capital before a directional move.
+
+#### **4. Machine Learning Model**
+
+* **Task Type:** Regression.
+* **Objective:** To predict the potential profitability of a signal, expressed as a `reward_score`.
+* **Labeling:** After `T` minutes (e.g., 20 min), each signal is assigned a `reward_score` calculated using the formula:
+    $$
+    \text{reward\_score} = \frac{\text{Max\_Favorable\_Price} - \text{Entry\_Price}}{\text{Entry\_Price}} \times e^{-k \cdot t}
+    $$
+    where `t` is the time to reach the maximum favorable price, and `k` is a time decay factor.
+* **Feature Set:** DEX order flow imbalance, liquidity change velocity, CEX order book depth, CEX order book imbalance, DEX-CEX spread, market regime (BTC volatility), and others.
+* **Models:** Gradient Boosting algorithms (e.g., LightGBM, XGBoost).
+
+#### **5. Risk Management Module**
+
+This is an integrated, always-on module applied to all signals.
+
+1.  **Pre-Trade Slippage Analysis:** Before an order is sent, the system assesses the CEX order book depth to calculate the expected price slippage for the intended trade size. A signal is canceled if `(predicted_profit - estimated_slippage) < 0`.
+2.  **Market Regime Filter:** The system monitors the real-time volatility of BTC and ETH. If volatility exceeds a predefined threshold, signal generation for altcoins is temporarily halted or their risk score is increased.
+3.  **Latency Compensation:** The system continuously measures data acquisition and processing latency. During periods of higher latency, signal generation thresholds are automatically tightened.
+4.  **Cool-down Period:** After a signal for a specific trading pair, new signals for that same pair are blocked for a set period (e.g., 15 minutes).
+
+#### **6. Data Storage Structure**
+
+All system events and signals are stored in a `signals` table.
+
+| Field | Type | Description |
+|:---|:---|:---|
+| `id` | UUID | Unique record identifier. |
+| `timestamp` | TIMESTAMPTZ | Timestamp of signal generation. |
+| `pair_symbol` | VARCHAR(20) | Trading pair, e.g., 'SOL/USDT'. |
+| `signal_type` | VARCHAR(10) | `BUY` / `SELL`. |
+| `predicted_reward` | FLOAT | The `reward_score` predicted by the ML model. |
+| `actual_reward` | FLOAT | The actual `reward_score` calculated after the analysis window. |
+| `dex_price` | DECIMAL | DEX price at the time of the signal. |
+| `cex_price` | DECIMAL | CEX price at the time of the signal. |
+| `dex_orderflow_imbalance`| FLOAT | The DEX order flow imbalance metric. |
+| `cex_orderbook_depth_5pct`| DECIMAL | CEX liquidity within 5% of the market price. |
+| `market_regime` | VARCHAR(20) | Market regime (e.g., 'CALM', 'BTC_VOLATILE'). |
+| `data_latency_ms` | INTEGER | Latency (ms) from event to data reception. |
+| `execution_latency_ms`| INTEGER | Latency (ms) from signal to order execution confirmation. |
+| `estimated_slippage_pct`| FLOAT | Calculated pre-trade estimated slippage. |
+| `actual_slippage_pct` | FLOAT | Actual slippage calculated post-trade. |
+
+#### **7. Testing and Validation Methodology**
+
+System performance is evaluated through historical testing (backtesting).
+
+* **Data:** The use of historical `tick-by-tick` transaction and L2 order book data from specialized providers (e.g., Kaiko, Amberdata) is mandatory.
+* **Simulation:** The backtesting engine must accurately simulate:
+    * **Network Latency:** By adding a realistic latency component to every operation.
+    * **Price Slippage:** By modeling the order's impact on the order book to calculate a realistic execution price.
+    * **Trading Fees.**
+
+#### **8. System Maintenance Agent**
+
+This is an autonomous module responsible for the long-term stability and performance of the system.
+
+* **Functions:**
+    1.  **Model Performance Monitoring:** Continuously monitors the discrepancy between `predicted_reward` and `actual_reward`. It triggers an alert in case of significant model drift.
+    2.  **Parameter Optimization:** Periodically (e.g., weekly) re-optimizes algorithm thresholds and risk management parameters using the latest data.
+    3.  **Automated Model Retraining:** Initiates the ML model retraining pipeline with newly collected and labeled data.
+
+#### **9. Technology and Resource Stack**
+
+* **Data Acquisition:** Direct WebSocket access to CEXs (e.g., via CCXT Pro); real-time DEX data providers (e.g., Birdeye).
+* **Data Storage:** PostgreSQL or TimescaleDB for the operational database; AWS S3 / Google BigQuery for long-term analytical storage.
+* **Historical Data:** Kaiko, Amberdata.
+* **Infrastructure:** A Virtual Private Server (VPS) located in geographic proximity to the exchange's servers to minimize network latency.
+
+#### **10. Process Flow Diagram**
+
+1.  **Data Ingestion:** Parallel streams ingest real-time DEX trade data and CEX L2 order book data.
+2.  **Feature Calculation:** The system calculates dozens of features in real-time (order flow imbalance, liquidity gradient, spread, etc.).
+3.  **ML Model Scoring:** The calculated features are fed into the ML model, which returns a `predicted_reward` score.
+4.  **Signal Candidate Generation:** If the `predicted_reward` exceeds a minimum threshold (e.g., 0.005, corresponding to a 0.5% profit), a signal candidate is created.
+5.  **Risk Check:** The signal candidate is passed to the risk management module, which checks the market regime and calculates the estimated slippage.
+6.  **Execution Decision:** If the signal passes all risk filters, an order is sent to the CEX.
+7.  **Execution Monitoring:** The system monitors the order execution, recording the `actual_slippage_pct` and `execution_latency_ms`.
+8.  **Results Analysis:** After `T` minutes, the system evaluates the trade's outcome, calculates the `actual_reward`, and logs the complete record to the database. This data will be used for future model retraining.
