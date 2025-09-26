@@ -177,43 +177,41 @@ Mark Task 1 as completed in [ATS_IMPLEMENTATION_PROGRESS.md](ATS_IMPLEMENTATION_
 
 ---
 
-## Task 2: Database Setup
-**Objective**: Install and configure PostgreSQL with TimescaleDB extension for time-series data on Windows 11.
+## Task 2: Database Setup (Docker-based)
+**Objective**: Set up TimescaleDB using Docker for time-series data on Windows 11.
 
 ### Implementation Steps
 
-#### 2.1 Install PostgreSQL on Windows 11
-- Download PostgreSQL installer from [postgresql.org](https://postgresql.org)
-- Choose version 13+ for TimescaleDB compatibility
-- During installation:
-  - Note the superuser password (you'll need this)
-  - Install pgAdmin 4 for database management
-  - Default port 5432 is fine for local development
+#### 2.1 Install Docker Desktop on Windows 11
+- Download Docker Desktop from [docker.com/get-started/get-docker/](https://docs.docker.com/get-started/get-docker/)
+- Run the installer and follow the installation wizard
+- Restart your computer if prompted
+- Verify Docker installation: Open Command Prompt and run `docker --version`
+- Ensure Docker Desktop is running (check system tray)
 
-#### 2.2 Install TimescaleDB Extension
-- Download TimescaleDB installer for Windows from [timescale.com](https://timescale.com)
-- Run installer and select your PostgreSQL installation
-- Verify installation in pgAdmin under Extensions
+#### 2.2 Deploy TimescaleDB Container
+```bash
+# Pull TimescaleDB-HA image with PostgreSQL 17
+docker pull timescale/timescaledb-ha:pg17
 
-#### 2.3 Configure PostgreSQL
-Locate `postgresql.conf` (usually in `C:\Program Files\PostgreSQL\[version]\data\`)
-
-Add/modify these settings:
-```
-shared_preload_libraries = 'timescaledb'
-max_connections = 100
-shared_buffers = 256MB
-effective_cache_size = 1GB
-work_mem = 4MB
-maintenance_work_mem = 64MB
+# Run TimescaleDB container
+docker run -d --name timescaledb -p 5432:5432 -e POSTGRES_PASSWORD=your_secure_password_here timescale/timescaledb-ha:pg17
 ```
 
-Restart PostgreSQL service after changes.
+**Important Notes:**
+- Replace `your_secure_password_here` with a strong password
+- No volume mapping (`-v`) to avoid Windows permission issues
+- Data stored inside container (for development use)
+- For production, consider Docker named volumes
 
-#### 2.4 Create Database and User
-Open pgAdmin or psql and execute:
+#### 2.3 Create ATS Database and User
+Connect to the TimescaleDB container:
+```bash
+docker exec -it timescaledb psql -U postgres
+```
+
+Execute these SQL commands:
 ```sql
--- Connect as superuser
 -- Create dedicated user for ATS
 CREATE USER ats_user WITH PASSWORD 'your_secure_password_here';
 
@@ -226,13 +224,20 @@ GRANT ALL PRIVILEGES ON DATABASE ats_db TO ats_user;
 -- Connect to ats_db
 \c ats_db
 
--- Enable TimescaleDB extension
+-- Enable TimescaleDB extension (pre-installed in container)
 CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+-- Grant schema permissions
+GRANT USAGE ON SCHEMA public TO ats_user;
+GRANT CREATE ON SCHEMA public TO ats_user;
+
+-- Exit psql
+\q
 ```
 
-#### 2.5 Configure Connection Settings
+#### 2.4 Configure Connection Settings
 Create `.env` file in project root:
-```
+```env
 # Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
@@ -248,43 +253,54 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 ```
 
-Create `src/database/connection.py`:
-```python
-# Example connection structure
-import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
+The database connection module is already implemented in `src/database/connection.py` with:
+- Environment variable configuration
+- Connection pooling and error handling
+- TimescaleDB extension verification
+- Session management with context managers
 
-load_dotenv()
+#### 2.5 Verify Database Setup
+Run the database setup script:
+```bash
+# Activate virtual environment
+ats_env\Scripts\activate
 
-def get_database_url():
-    return f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-
-def create_database_engine():
-    return create_engine(get_database_url(), echo=False)
+# Run setup verification
+python src/database/setup.py
 ```
 
 ### Key Implementation Details
-- Use environment variables for database credentials
-- Configure Windows Firewall if accessing from other machines
-- Set up automatic PostgreSQL service startup
-- Consider database backup strategy for production
+- **Docker-based**: No manual PostgreSQL installation required
+- **TimescaleDB-HA**: Includes PostgreSQL 17 + TimescaleDB + extensions
+- **Windows 11 Optimized**: Avoids common permission issues
+- **Development Ready**: Container includes all database tools (psql, etc.)
+- **Port Mapping**: Database accessible on localhost:5432
+- **Existing Integration**: Works with implemented connection modules
 
 ### Testing Instructions
 
-#### 1. Connection Test
+#### 1. Container Status Test
+```bash
+# Check if container is running
+docker ps
+
+# View container logs
+docker logs timescaledb
+
+# Expected: Container should be running and healthy
+```
+
+#### 2. Database Connection Test
 ```python
-# Create test file: test_database.py
+# Create test file: test_docker_database.py
 import psycopg2
-from sqlalchemy import create_engine
-from src.database.connection import get_database_url
+from src.database.connection import get_database_url, test_database_connection
 
 # Test direct connection
 try:
     conn = psycopg2.connect(
         host="localhost",
-        database="ats_db",
+        database="ats_db", 
         user="ats_user",
         password="your_secure_password_here"
     )
@@ -293,27 +309,34 @@ try:
 except Exception as e:
     print(f"✗ Direct connection failed: {e}")
 
-# Test SQLAlchemy connection
-try:
-    engine = create_engine(get_database_url())
-    with engine.connect() as conn:
-        result = conn.execute("SELECT version();")
-        version = result.fetchone()[0]
-        print(f"✓ PostgreSQL version: {version}")
-except Exception as e:
-    print(f"✗ SQLAlchemy connection failed: {e}")
+# Test connection module
+if test_database_connection():
+    print("✓ Database connection module working")
+else:
+    print("✗ Database connection module failed")
 ```
 
-#### 2. TimescaleDB Test
-```sql
--- Execute in pgAdmin or psql
-SELECT * FROM timescaledb_information.license;
-SELECT * FROM pg_extension WHERE extname = 'timescaledb';
+#### 3. TimescaleDB Extension Test
+```bash
+# Connect to container and check extensions
+docker exec -it timescaledb psql -U postgres -d ats_db -c "\dx"
+
+# Expected output should include:
+# - timescaledb
+# - timescaledb_toolkit (optional)
 ```
 
-#### 3. Performance Test
+#### 4. Python Integration Test
+```bash
+# Run comprehensive database tests
+python tests/test_database.py
+
+# Expected: All tests should pass
+```
+
+#### 5. Performance Test
 ```python
-# Test basic database operations
+# Test basic database operations with Docker setup
 from sqlalchemy import create_engine, text
 from src.database.connection import get_database_url
 
@@ -337,17 +360,44 @@ with engine.connect() as conn:
 ```
 
 ### Expected Test Results
-- Connection should succeed without errors
-- TimescaleDB extension should be listed and active
-- Database should be accessible with created user credentials
+- Docker container should be running without errors
+- Database connection should succeed from Python
+- TimescaleDB extension should be available and active
+- All database tests should pass
 - Basic CRUD operations should work correctly
+
+### Troubleshooting
+
+#### Common Docker Issues
+1. **Container not running**
+   - Check Docker Desktop status
+   - Restart container: `docker restart timescaledb`
+   - View logs: `docker logs timescaledb`
+
+2. **Connection refused**
+   - Ensure container is running: `docker ps`
+   - Check port mapping: `docker port timescaledb`
+   - Verify Windows Firewall settings
+
+3. **Permission errors**
+   - Avoid volume mapping on Windows
+   - Use Docker named volumes for persistence
+   - Check container logs for permission issues
+
+4. **TimescaleDB extension missing**
+   - Verify correct image: `timescale/timescaledb-ha:pg17`
+   - Recreate container if needed
+   - Check extensions: `docker exec -it timescaledb psql -U postgres -c "\dx"`
+
+For detailed troubleshooting, refer to [DATABASE_SETUP_INSTRUCTIONS.md](../DATABASE_SETUP_INSTRUCTIONS.md)
 
 ### Post-Test Actions
 ```bash
 # Add database configuration (without passwords)
-git add config/.env.example  # Create example without real passwords
+git add .env.example  # Create example without real passwords
 git add src/database/connection.py
-git commit -m "feat: PostgreSQL and TimescaleDB setup for Windows 11"
+git add src/database/setup.py
+git commit -m "feat: Docker-based TimescaleDB setup for Windows 11"
 ```
 
 ### Progress Update

@@ -20,7 +20,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
 Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
 ```
 
-#### Phase A1: System Setup (0/6 tasks) 🔴
+#### Phase A1: System Setup (0/6 tasks) �
 - [ ] **Task 1**: Development Environment Setup
 - [ ] **Task 2**: Database Setup  
 - [ ] **Task 3**: Configuration Management
