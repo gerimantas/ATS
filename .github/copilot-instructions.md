@@ -8,14 +8,87 @@ This is an **early-stage** Automated Trading System that uses DEX data as leadin
 ## Project Structure & Navigation
 - **Root Documentation**: `README.md`, `ATS_IMPLEMENTATION_GUIDE.md` (master navigation)
 - **Implementation Guides**: `implementation_guides/ATS_GUIDE_PHASE_*.md` (A1-A3, B1-B2, C)
-- **Progress Tracking**: `implementation_guides/ATS_IMPLEMENTATION_PROGRESS.md` 
+- **Progress Tracking**: `implementation_guides/ATS_IMPLEMENTATION_PROGRESS.md`
 - **Architecture**: `implementation_guides/ATS_strategic_concept.txt`
 
-## Implementation Workflow & Patterns
+## Critical Implementation Patterns
+
+### Database Schema (Signal Model)
+All trading events stored in central `signals` table with 40+ fields. **Always reference `src/database/models.py`** for the complete Signal model:
+
+```python
+# Key fields every signal must populate:
+signal = Signal(
+    timestamp=datetime.now(timezone.utc),  # Always UTC with timezone
+    pair_symbol="SOL/USDT",                 # Format: BASE/QUOTE
+    signal_type="BUY",                      # "BUY" or "SELL" only
+    predicted_reward=0.0023,                # Float between -1.0 and 1.0
+    dex_price=Decimal('123.45'),           # DECIMAL(20,8) for precision
+    cex_price=Decimal('123.50'),           # DECIMAL(20,8) for precision
+    market_regime="normal",                 # "normal", "high_volatility", "bear"
+    estimated_slippage_pct=0.001,          # Risk calculation input
+    signal_strength=0.85,                  # 0.0 to 1.0 confidence score
+    algorithm_version="1.0",               # Track algorithm versions
+    signal_source="dex_orderflow"          # Algorithm identifier
+)
+```
+
+### Data Connectors Architecture
+**Three-tier data architecture** - never access exchanges directly:
+
+1. **CEXConnector** (`src/data/cex_connector.py`): CCXT Pro for centralized exchanges
+2. **DEXConnector** (`src/data/dex_connector.py`): Birdeye API for decentralized exchanges  
+3. **DataSyncManager** (`src/data/sync_manager.py`): Latency-compensated synchronization
+
+```python
+# Always use sync manager, never direct connector access:
+sync_manager = DataSyncManager()
+await sync_manager.add_connector('binance_cex', cex_connector)
+await sync_manager.add_connector('raydium_dex', dex_connector)
+await sync_manager.start_sync(['SOL/USDT'])
+```
+
+### Logging & Error Handling
+**Loguru-based logging** with structured format. **Always use `config/logging_config.py`**:
+
+```python
+from config.logging_config import get_logger
+logger = get_logger("module.submodule")  # Hierarchical naming
+
+# Critical logging patterns:
+logger.info("Starting {task} for {pair}", task="signal_generation", pair="SOL/USDT")
+logger.error("Failed {operation}: {error}", operation="api_call", error=str(e))
+logger.debug("Latency: {latency_ms}ms, Quality: {score}", latency_ms=45, quality_score=0.95)
+```
+
+### Testing Patterns
+**Async-first testing** with real API validation. Reference `tests/test_*.py` files:
+
+```python
+# Test structure pattern:
+async def test_feature():
+    """Test docstring describing what validates"""
+    print("=== Test Name ===")
+    try:
+        # Test implementation
+        result = await some_async_operation()
+        assert result is not None, "Result should not be None"
+        print("✓ Test passed")
+        return True
+    except Exception as e:
+        print(f"✗ Test failed: {e}")
+        return False
+
+# Run all tests:
+if __name__ == "__main__":
+    asyncio.run(run_all_tests())
+```
+
+## Development Workflows
 
 ### 3-Phase Development Strategy
 - **Phase A (Tasks 1-16.1)**: Infrastructure & Data Foundation (4-6 weeks)
-  - A1: Setup & Infrastructure (Environment, Database, Data Integration)  
+  - A1: Setup & Infrastructure (Environment, Database, Data Integration)
   - A2: Algorithms & Risk Management (Signal algorithms, risk systems)
   - A3: Trading & Validation (Paper trading, notifications)
 - **Phase B (Tasks 17-26)**: ML & Execution (8-12 weeks)
@@ -29,42 +102,34 @@ This is an **early-stage** Automated Trading System that uses DEX data as leadin
 - Update `ATS_IMPLEMENTATION_PROGRESS.md` after completing tasks
 - Reference specific implementation guides for detailed instructions
 
-### Required Directory Structure
-```
-ats_project/
-├── src/
-│   ├── data/          # Data connectors (CCXT Pro, Birdeye API)
-│   ├── algorithms/    # Signal generation algorithms
-│   ├── risk/          # Risk management systems  
-│   ├── ml/            # Machine learning pipeline
-│   ├── database/      # PostgreSQL/TimescaleDB models
-│   ├── trading/       # Paper/live trading execution
-│   └── monitoring/    # System monitoring & alerts
-├── config/            # Environment configurations
-├── tests/             # Test suites per module
-├── logs/              # System logs
-└── data/              # Local data cache/storage
+### Windows 11 Development Environment
+```powershell
+# Activate environment (required for all Python operations):
+ats_env\Scripts\activate
+
+# Database operations:
+docker ps  # Check TimescaleDB container
+python src/database/setup.py  # Database verification
+
+# Testing (run after any changes):
+python tests/test_cex_connector.py
+python tests/test_dex_connector.py
+python tests/test_sync_manager.py
 ```
 
 ## Key Implementation Patterns
 
-### Database Schema (signals table)
-All events stored in central `signals` table with these critical fields:
-- Time-series: `timestamp`, `pair_symbol`, `signal_type` 
-- ML features: `predicted_reward`, `actual_reward`, latency metrics
-- Risk data: `estimated_slippage_pct`, `actual_slippage_pct`, `market_regime`
-
 ### Signal Generation Algorithms
-Implement these three core detectors:
+Implement these three core detectors in `src/algorithms/`:
 1. **DEX Order Flow Imbalance** - 10-30 second aggressive trade volume analysis
 2. **DEX Liquidity Event Detection** - Rate of change, not absolute amounts
 3. **Volume-Price Correlation** - High volume + minimal price movement patterns
 
 ### Risk Management Rules
-- **Pre-trade validation:** Cancel if `(predicted_profit - estimated_slippage) < 0`
+- **Pre-trade validation:** `if (predicted_profit - estimated_slippage) < 0: cancel_trade()`
 - **Market regime filtering:** Halt altcoin signals during high BTC/ETH volatility
 - **Cool-down periods:** 15-minute blocks per trading pair after signals
-- **Latency compensation:** Tighten thresholds during high-latency periods
+- **Latency compensation:** Tighten thresholds during high-latency periods (>200ms)
 
 ## Technology Stack Expectations
 
@@ -73,7 +138,7 @@ Implement these three core detectors:
 - **CEX data:** CCXT Pro for WebSocket connections
 - **Historical:** Kaiko/Amberdata for backtesting (tick-by-tick + L2 required)
 
-### Storage & Infrastructure  
+### Storage & Infrastructure
 - **Operational DB:** PostgreSQL/TimescaleDB for real-time data
 - **Analytics:** AWS S3/Google BigQuery for long-term storage
 - **Deployment:** VPS with geographic proximity to exchanges (latency critical)
@@ -83,20 +148,36 @@ Implement these three core detectors:
 - **Target:** `reward_score` with exponential time decay formula
 - **Retraining:** Automated weekly with maintenance agent monitoring
 
-## Development Workflows
+## Code Quality Standards
 
-### Windows 11 Development Environment  
-- **Python**: Use virtual environment `ats_env\Scripts\activate`
-- **Database**: PostgreSQL + TimescaleDB for time-series data
-- **Dependencies**: Install via `pip install -r requirements.txt` (defined in Phase A1)
-- **Monitoring**: Windows Event Logs + custom monitoring dashboard
-- **Firewall**: Configure ports 8000-9000 for API access
+### Type Hints & Documentation
+```python
+from typing import Dict, List, Optional, Callable
+from loguru import logger
 
-### Testing & Validation Approach
-- **Backtesting Requirements**: Simulate network latency, realistic slippage, trading fees
-- **Data Quality Standards**: Use professional tick-by-tick providers, not free APIs  
-- **Paper Trading**: Validate all algorithms before live execution
-- **Performance Metrics**: Track `predicted_reward` vs `actual_reward` deviation
+async def process_signal(data: Dict[str, Any]) -> Optional[Signal]:
+    """
+    Process raw market data into trading signal.
+    
+    Args:
+        data: Raw market data dictionary
+        
+    Returns:
+        Signal object if valid signal generated, None otherwise
+    """
+```
+
+### Error Handling Pattern
+```python
+try:
+    result = await risky_operation()
+except ccxt.NetworkError as e:
+    logger.error("Network error in {operation}: {error}", operation="api_call", error=str(e))
+    await handle_retry()
+except Exception as e:
+    logger.error("Unexpected error: {error}", error=str(e))
+    raise  # Re-raise for higher level handling
+```
 
 ### Configuration Management
 - Use `.env` files for API keys and sensitive configuration
