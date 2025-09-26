@@ -338,8 +338,12 @@ class DataSyncManager:
     
     def _update_sync_health(self, task_key: str, success: bool):
         """Update sync health status"""
-        # Extract connector name from task key
-        connector_name = task_key.split('_')[0] if '_' in task_key else task_key
+        # Extract connector name from task key (remove data_type suffix)
+        parts = task_key.split('_')
+        if len(parts) >= 2:
+            connector_name = '_'.join(parts[:-1])  # Everything except last part (data_type)
+        else:
+            connector_name = task_key
         
         if connector_name in self.sync_health:
             health = self.sync_health[connector_name]
