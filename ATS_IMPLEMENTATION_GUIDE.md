@@ -22,7 +22,7 @@ The ATS implementation follows a **3-phase approach** with **32 tasks** total, d
 **Prerequisites**: Windows 11, basic Python knowledge  
 **Covers**:
 - Task 1: Environment Setup (Python, dependencies, project structure)
-- Task 2: Database Setup (PostgreSQL + TimescaleDB)
+- Task 2: Database Setup (TimescaleDB using Docker)
 - Task 3: CEX Data Integration (CCXT Pro)
 - Task 4: DEX Data Integration (Birdeye API)
 - Task 5: Data Synchronization Module
