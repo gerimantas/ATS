@@ -1,11 +1,40 @@
 import aiohttp
 
+# CoinGecko API requires mapping common symbols to their unique IDs
+# This list should be expanded over time.
+SYMBOL_TO_CG_ID = {
+    'SOL': 'solana',
+    'BONK': 'bonk',
+    'WIF': 'dogwifhat',
+    'JUP': 'jupiter-exchange-solana',
+}
+
 async def verify(session: aiohttp.ClientSession, cex_symbol: str):
     """
-    This is the standardized function for all CEX verifiers.
-    It fetches data for a specific symbol from a third-party source to verify the primary CEX API data.
+    Fetches price data for a given symbol from CoinGecko API to serve as a secondary
+    verification source for CEX data.
     """
-    print(f"Executing coingecko_verifier for {cex_symbol}...")
-    # The full logic will be implemented later.
-    # For now, we return a placeholder dictionary.
-    return {'source': 'coingecko', 'price': None, 'volume': None}
+    coin_id = SYMBOL_TO_CG_ID.get(cex_symbol.upper())
+    if not coin_id:
+        # We don't have this coin in our map, so we can't verify it.
+        return {'source': 'coingecko', 'price': None, 'error': f'Symbol {cex_symbol} not found in CoinGecko map.'}
+
+    url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+
+    try:
+        async with session.get(url, timeout=5) as response:
+            response.raise_for_status()
+            data = await response.json()
+
+            price = data.get(coin_id, {}).get('usd')
+            if price:
+                return {'source': 'coingecko', 'price': float(price)}
+            else:
+                return {'source': 'coingecko', 'price': None, 'error': 'Price not found in CoinGecko response.'}
+
+    except aiohttp.ClientError as e:
+        print(f"ERROR in coingecko_verifier for {cex_symbol}: Network error - {e}")
+        return {'source': 'coingecko', 'price': None, 'error': str(e)}
+    except Exception as e:
+        print(f"ERROR in coingecko_verifier for {cex_symbol}: Unexpected error - {e}")
+        return {'source': 'coingecko', 'price': None, 'error': str(e)}
