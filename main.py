@@ -8,6 +8,7 @@ import signal_generator
 import risk_manager
 import database_manager
 import scanner
+import post_signal_analyzer
 
 # --- Global State for Watchlist ---
 watchlist = []
@@ -111,12 +112,21 @@ async def analyze_pair(session, pair_info):
     if is_safe:
         signal = signal_generator.generate_signal(dex_data, primary_cex_data)
         if signal:
-            database_manager.create_signal(
+            signal_id = database_manager.create_signal(
                 timestamp=signal['timestamp'],
                 dex_price=signal['dex_price'],
                 cex_price=signal['cex_price'],
                 spread=signal['spread'],
-                data_latency_ms=signal.get('latency', 0)
+                data_latency_ms=signal.get('latency', 0),
+                pair_symbol=f"{cex_symbol}/USDT",
+                cex_symbol=cex_symbol,
+                signal_type=signal['signal_type']
+            )
+            # Schedule reward calculation as a background task
+            asyncio.create_task(
+                post_signal_analyzer.calculate_and_store_reward(
+                    session, signal_id, cex_symbol, signal['cex_price'], signal['signal_type']
+                )
             )
 
 if __name__ == "__main__":

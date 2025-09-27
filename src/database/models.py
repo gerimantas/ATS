@@ -20,6 +20,7 @@ class Signal(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
     pair_symbol = Column(String(20), nullable=False, index=True)
+    cex_symbol = Column(String(20), nullable=False, index=True)  # e.g., 'SOL' for SOL/USDT
     signal_type = Column(String(10), nullable=False)  # 'BUY' or 'SELL'
     
     # ML and prediction fields

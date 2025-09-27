@@ -32,3 +32,10 @@ ENABLED_DEX_SCANNERS = [
 ENABLED_CEX_VERIFIERS = [
     'coingecko_verifier',
 ]
+
+# --- REWARD CALCULATION CONFIGURATION ---
+# How long to wait after a signal before calculating reward (in seconds)
+REWARD_CALCULATION_DELAY_SECONDS = 300  # 5 minutes
+
+# How many minutes of historical data to analyze for reward calculation
+REWARD_TIME_WINDOW_MINUTES = 60  # 1 hour

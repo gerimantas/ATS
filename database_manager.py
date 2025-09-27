@@ -9,6 +9,9 @@ class Signal(Base):
     __tablename__ = 'signals'
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime)
+    pair_symbol = Column(String(20), nullable=False)
+    cex_symbol = Column(String(20), nullable=False)
+    signal_type = Column(String(10), nullable=False)
     dex_price = Column(Float)
     cex_price = Column(Float)
     spread = Column(Float)
@@ -27,10 +30,13 @@ def setup_database():
     Base.metadata.create_all(engine)
 
 # Update the create_signal function signature and body
-def create_signal(timestamp, dex_price, cex_price, spread, data_latency_ms=None, notes=None):
+def create_signal(timestamp, dex_price, cex_price, spread, data_latency_ms=None, notes=None, pair_symbol="UNKNOWN", cex_symbol="UNKNOWN", signal_type="UNKNOWN"):
     session = Session()
     new_signal = Signal(
         timestamp=timestamp,
+        pair_symbol=pair_symbol,
+        cex_symbol=cex_symbol,
+        signal_type=signal_type,
         dex_price=dex_price,
         cex_price=cex_price,
         spread=spread,
@@ -39,5 +45,21 @@ def create_signal(timestamp, dex_price, cex_price, spread, data_latency_ms=None,
     )
     session.add(new_signal)
     session.commit()
-    print(f"SUCCESS: Signal successfully logged to the database.")
+    signal_id = new_signal.id  # Get the ID of the new signal
+    print(f"SUCCESS: Signal {signal_id} logged to the database.")
     session.close()
+    return signal_id  # Return the ID
+
+def update_signal_reward(signal_id: int, reward_score: float):
+    """Finds a signal by its ID and updates its actual_reward field."""
+    session = Session()
+    try:
+        signal_to_update = session.query(Signal).filter(Signal.id == signal_id).first()
+        if signal_to_update:
+            signal_to_update.actual_reward = reward_score
+            session.commit()
+            print(f"SUCCESS: Updated reward for signal ID {signal_id} to {reward_score:.5f}")
+        else:
+            print(f"ERROR: Could not find signal with ID {signal_id} to update reward.")
+    finally:
+        session.close()
