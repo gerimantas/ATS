@@ -17,6 +17,7 @@
 ### Prerequisites
 - **OS**: Windows 11 (latest updates)
 - **Python**: 3.9+ with pip
+- **Docker**: Latest version for Windows (required for TimescaleDB)
 - **RAM**: Minimum 8GB, recommended 16GB
 - **Storage**: 50GB+ free space
 - **Network**: Stable internet connection
@@ -27,12 +28,28 @@
 git clone <repository-url>
 cd ATS
 
+# Install and start Docker (if not already running)
+# Download from: https://www.docker.com/products/docker-desktop
+
 # Set up Python environment
 python -m venv ats_env
 ats_env\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Set up TimescaleDB database with Docker
+docker run -d \
+  --name timescaledb \
+  -p 5432:5432 \
+  -e POSTGRES_DB=ats_db \
+  -e POSTGRES_USER=ats_user \
+  -e POSTGRES_PASSWORD=your_secure_password \
+  timescale/timescaledb-ha:pg17
+
+# Wait for database to be ready (about 30 seconds)
+# Then run database migration (if needed)
+python run_migration.py
 ```
 
 ### Getting Started
@@ -97,12 +114,29 @@ ATS System Architecture
 
 ### Technology Stack
 - **Backend**: Python 3.9+
-- **Database**: PostgreSQL + TimescaleDB
+- **Database**: PostgreSQL + TimescaleDB (Docker container)
+- **Containerization**: Docker Desktop for Windows
 - **ML Framework**: LightGBM, XGBoost, scikit-learn
 - **Data Processing**: Pandas, NumPy, SciPy
 - **Exchange APIs**: CCXT Pro, Birdeye API
 - **Monitoring**: Custom dashboards, Windows Performance Monitor
 - **Deployment**: Windows 11 local environment
+
+## 📈 Current System Status
+
+### ✅ System Health Check
+- **Database**: PostgreSQL 17.6 + TimescaleDB 2.21.4 ✅
+- **Docker**: Container running and healthy ✅
+- **Algorithm Tests**: 5/5 integration tests passing ✅
+- **Data Connectors**: CEX (CCXT Pro) and DEX (Birdeye API) ✅
+- **Risk Management**: All 4 risk systems operational ✅
+- **Signal Generation**: 8 algorithms producing consistent results ✅
+
+### 🔧 Recent Updates
+- **Database Migration**: Added `cex_symbol` column to signals table
+- **SQL Query Fix**: Resolved SQLAlchemy text() wrapper issues
+- **Test Suite**: All algorithm integration tests passing
+- **Documentation**: Updated copilot instructions for AI agents
 
 ## 📊 Implementation Progress
 
@@ -247,10 +281,28 @@ cd ATS
 # Activate virtual environment
 ats_env\Scripts\activate
 
+# Run database migration if needed
+python run_migration.py
+
 # Status: Phase A1 & A2 - 100% complete
 ```
 
-### 2. Algorithm Testing ✅ COMPLETE
+### 2. System Health Check
+```bash
+# Check database status
+python -c "from src.database.session import test_session; test_session()"
+
+# Run algorithm integration tests
+python tests/test_algorithms_integration.py
+
+# Check Docker containers
+docker ps
+
+# Check Docker container health
+docker stats timescaledb
+```
+
+### 3. Algorithm Testing ✅ COMPLETE
 ```bash
 # Test individual algorithms
 python tests/test_order_flow.py      # Order flow (7/8 tests)
@@ -260,12 +312,21 @@ python tests/test_liquidity.py       # Liquidity (7/8 tests)
 python tests/test_algorithms_integration.py  # Integration (5/5 tests)
 ```
 
-### 3. Development Process
+### 4. Development Process
 1. **Read Phase Guide** - Understand requirements and architecture
 2. **Implement Components** - Follow step-by-step instructions
 3. **Run Tests** - Execute provided test cases
 4. **Update Progress** - Mark completed tasks in progress tracker
 5. **Commit Changes** - Use provided git commands
+
+### 5. Running the System
+```bash
+# Start main system
+python main.py
+
+# Start dashboard (in separate terminal)
+./run_dashboard.bat
+```
 
 ### 4. Testing Strategy
 - **Unit Tests** - Individual component testing ✅
@@ -310,6 +371,14 @@ python tests/test_algorithms_integration.py  # Integration (5/5 tests)
 - **Database Connections**: Verify PostgreSQL service status
 - **Python Dependencies**: Use virtual environment
 - **Windows Firewall**: Configure for API access
+- **Docker Issues**: Check Docker Desktop is running and containers are healthy
+
+### Docker Troubleshooting
+- **Container won't start**: Check if port 5432 is already in use
+- **Database connection fails**: Ensure container is running with `docker ps`
+- **Permission issues**: Make sure Docker Desktop has file sharing permissions
+- **Memory issues**: Increase Docker memory allocation in Docker Desktop settings
+- **Port conflicts**: Change port mapping if 5432 is occupied: `-p 5433:5432`
 
 ### Getting Help
 1. **Check Documentation**: Review relevant phase guide
@@ -418,15 +487,73 @@ This project is for educational and personal use. Please ensure compliance with 
 2. **🚀 Continue**: [Phase A3: Trading & Validation](implementation_guides/ATS_GUIDE_PHASE_A3_TRADING.md)
 3. **📖 Reference**: [ATS Implementation Guide](ATS_IMPLEMENTATION_GUIDE.md)
 
-### 🏃‍♂️ Quick Verification Commands
-```bash
-# Verify Phase A1 & A2 completion
-docker ps                                    # TimescaleDB container running
-python tests/test_algorithms_integration.py  # Full algorithm pipeline (5/5 tests)
-python tests/test_order_flow.py             # Order flow algorithm (7/8 tests)
-python tests/test_liquidity.py              # Liquidity algorithm (7/8 tests)
+## Quick Reference Commands
 
-# Ready for Phase A3: Trading & Validation
+### Environment Setup
+```powershell
+# Always run first:
+ats_env\Scripts\activate
+
+# Check system status:
+docker ps
+python src/database/setup.py
+```
+
+### Testing Commands
+```powershell
+# Core algorithm tests:
+python tests/test_algorithms_integration.py
+python tests/test_order_flow.py
+python tests/test_liquidity.py
+
+# Data integration tests:
+python tests/test_cex_connector.py
+python tests/test_dex_connector.py
+python tests/test_sync_manager.py
+```
+
+### System Startup
+```powershell
+# Main system:
+python main.py
+
+# Dashboard:
+./run_dashboard.bat
+# or
+streamlit run dashboard.py
+```
+
+### Database Operations
+```powershell
+# Run migration if needed:
+python run_migration.py
+
+# Test database connection:
+python -c "from src.database.session import test_session; test_session()"
+```
+
+### Docker Commands
+```powershell
+# Check if Docker is running:
+docker --version
+
+# Start TimescaleDB container:
+docker run -d --name timescaledb -p 5432:5432 -e POSTGRES_DB=ats_db -e POSTGRES_USER=ats_user -e POSTGRES_PASSWORD=your_password timescale/timescaledb-ha:pg17
+
+# Check running containers:
+docker ps
+
+# Stop database:
+docker stop timescaledb
+
+# Start existing container:
+docker start timescaledb
+
+# View database logs:
+docker logs timescaledb
+
+# Access database directly:
+docker exec -it timescaledb psql -U ats_user -d ats_db
 ```
 
 ### � Running the Dashboard

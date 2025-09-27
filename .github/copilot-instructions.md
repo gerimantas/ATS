@@ -1,15 +1,171 @@
 # Copilot Instructions for Automated Trading System (ATS)
 
 ## Project Overview
-This is an **early-stage** Automated Trading System that uses DEX data as leading indicators for CEX trading signals. The system follows a structured 3-phase implementation with 32 tasks, designed for Windows 11 local development.
+**ATS** is an early-stage Automated Trading System using DEX data as leading indicators for CEX trading signals. **NOT arbitrage** - predicts CEX price movements from DEX market microstructure anomalies. Follows structured 3-phase implementation (32 tasks) for Windows 11 local development.
 
-**Key Principle:** This is NOT arbitrage - we predict CEX price movements using DEX market microstructure anomalies.
+## Critical Architecture Patterns
 
-## Project Structure & Navigation
-- **Root Documentation**: `README.md`, `ATS_IMPLEMENTATION_GUIDE.md` (master navigation)
-- **Implementation Guides**: `implementation_guides/ATS_GUIDE_PHASE_*.md` (A1-A3, B1-B2, C)
-- **Progress Tracking**: `implementation_guides/ATS_IMPLEMENTATION_PROGRESS.md`
-- **Architecture**: `implementation_guides/ATS_strategic_concept.txt`
+### Database Schema (Signal Model)
+**Always reference `src/database/models.py`** for the complete Signal model. Every signal must populate these core fields:
+
+```python
+signal = Signal(
+    timestamp=datetime.now(timezone.utc),  # Always UTC with timezone
+    pair_symbol="SOL/USDT",                 # Format: BASE/QUOTE
+    signal_type="BUY",                      # "BUY" or "SELL" only
+    predicted_reward=0.0023,                # Float between -1.0 and 1.0
+    dex_price=Decimal('123.45'),           # DECIMAL(20,8) for precision
+    cex_price=Decimal('123.50'),           # DECIMAL(20,8) for precision
+    signal_strength=0.85,                  # 0.0 to 1.0 confidence score
+    algorithm_version="1.0",               # Track algorithm versions
+    signal_source="dex_orderflow"          # Algorithm identifier
+)
+```
+
+### Plugin Architecture
+**Modular plugin system** - never modify core logic, extend via plugins:
+
+```python
+# scanners/dexscreener_scanner.py - Standardized interface
+async def scan(session: aiohttp.ClientSession) -> List[Dict]:
+    """Returns: [{'cex_symbol': str, 'dex_pair_address': str, 'score': float}]"""
+    return []
+
+# config.py - Plugin configuration
+ENABLED_DEX_SCANNERS = ['dexscreener_scanner']
+ENABLED_CEX_VERIFIERS = ['coingecko_verifier']
+```
+
+### Data Connectors Architecture
+**Three-tier data architecture** - never access exchanges directly:
+
+```python
+# Always use sync manager, never direct connector access:
+sync_manager = DataSyncManager()
+await sync_manager.add_connector('binance_cex', cex_connector)
+await sync_manager.add_connector('raydium_dex', dex_connector)
+await sync_manager.start_sync(['SOL/USDT'])
+```
+
+## Development Workflows
+
+### Windows 11 Environment Setup
+```powershell
+# Always activate virtual environment first:
+ats_env\Scripts\activate
+
+# Check system status:
+docker ps  # Verify TimescaleDB container
+python src/database/setup.py  # Database verification
+```
+
+### Task-Driven Development
+- Follow sequential task numbering (Task 1 → Task 32)
+- Each task has clear deliverables in `implementation_guides/ATS_GUIDE_PHASE_*.md`
+- Update `implementation_guides/ATS_IMPLEMENTATION_PROGRESS.md` after completion
+- Reference specific phase guides for detailed instructions
+
+### Testing Patterns
+**Async-first testing** with real API validation:
+
+```python
+async def test_feature():
+    """Test docstring describing validation"""
+    print("=== Test Name ===")
+    try:
+        result = await some_async_operation()
+        assert result is not None, "Result should not be None"
+        print("✓ Test passed")
+        return True
+    except Exception as e:
+        print(f"✗ Test failed: {e}")
+        return False
+
+# Run tests individually after changes:
+python tests/test_algorithms_integration.py
+python tests/test_order_flow.py
+python tests/test_sync_manager.py
+```
+
+## Code Quality Standards
+
+### Logging & Error Handling
+**Loguru-based logging** with hierarchical naming:
+
+```python
+from config.logging_config import get_logger
+logger = get_logger("module.submodule")  # Hierarchical naming
+
+# Critical logging patterns:
+logger.info("Starting {task} for {pair}", task="signal_generation", pair="SOL/USDT")
+logger.error("Failed {operation}: {error}", operation="api_call", error=str(e))
+
+try:
+    result = await risky_operation()
+except ccxt.NetworkError as e:
+    logger.error("Network error in {operation}: {error}", operation="api_call", error=str(e))
+    await handle_retry()
+except Exception as e:
+    logger.error("Unexpected error: {error}", error=str(e))
+    raise
+```
+
+### Algorithm Implementation Pattern
+All algorithms follow this structure:
+
+```python
+class AlgorithmAnalyzer:
+    def __init__(self, window_seconds: int = 30):
+        self.window_seconds = window_seconds
+        self.signal_cooldowns = {}  # symbol -> last signal time
+        self.cooldown_period = 60   # seconds
+        self.signal_history = deque(maxlen=1000)
+
+    def add_data(self, symbol: str, data: Dict):
+        """Add new data point to analysis window"""
+        pass
+```
+
+### Risk Management Rules
+- **Pre-trade validation:** `if (predicted_profit - estimated_slippage) < 0: cancel_trade()`
+- **Market regime filtering:** Halt altcoin signals during high BTC/ETH volatility
+- **Cool-down periods:** 15-minute blocks per trading pair after signals
+- **Latency compensation:** Tighten thresholds during high-latency periods (>200ms)
+
+## Key Files & Navigation
+
+### Core Architecture Directories
+```
+src/
+├── algorithms/          # Trading algorithms (order_flow.py, liquidity.py, etc.)
+├── data/               # Data connectors (cex_connector.py, dex_connector.py, sync_manager.py)
+├── database/           # Database models and setup (models.py, setup.py)
+├── risk/               # Risk management (slippage.py, market_regime.py, etc.)
+├── trading/            # Trading execution (Phase B)
+└── monitoring/         # System monitoring (Phase C)
+
+config/                 # Configuration files (logging_config.py, etc.)
+tests/                  # Test files (test_*.py)
+scanners/              # DEX scanner plugins
+cex_verifiers/         # CEX verification plugins
+implementation_guides/ # Phase-specific guides
+```
+
+### Essential Reference Files
+- **`src/database/models.py`**: Complete Signal model (40+ fields)
+- **`config/logging_config.py`**: Logging setup and get_logger() function
+- **`tests/test_algorithms_integration.py`**: Integration testing patterns
+- **`main.py`**: System startup and main loop
+- **`requirements.txt`**: All dependencies with versions
+
+## AI Agent Priorities
+
+1. **Read Signal model** (`src/database/models.py`) before implementing signal-related code
+2. **Use hierarchical logging** with `get_logger("module.submodule")` for all logging
+3. **Follow async patterns** - all I/O operations should be async
+4. **Reference existing algorithms** for implementation patterns
+5. **Run relevant tests** after any changes to algorithms or data connectors
+6. **Update progress tracking** when completing tasks
 
 ## Critical Implementation Patterns
 
