@@ -49,14 +49,14 @@ pip install -r requirements.txt
 ### Implementation Guides
 Located in `implementation_guides/` directory:
 
-| Phase | Guide | Tasks | Duration | Status |
-|-------|-------|-------|----------|--------|
-| **A1** | [Setup & Infrastructure](implementation_guides/ATS_GUIDE_PHASE_A1_SETUP.md) | 1-6 | 1-2 weeks | ✅ **COMPLETE** |
-| **A2** | [Algorithms & Risk Management](implementation_guides/ATS_GUIDE_PHASE_A2_ALGORITHMS.md) | 7-14 | 2-3 weeks | ✅ **COMPLETE** |
-| **A3** | [Trading & Validation](implementation_guides/ATS_GUIDE_PHASE_A3_TRADING.md) | 15-16.1 | 1 week | 🔄 Next |
-| **B1** | [Execution System](implementation_guides/ATS_GUIDE_PHASE_B1_EXECUTION.md) | 17-19 | 2-3 weeks | 🔴 Pending |
-| **B2** | [ML Pipeline](implementation_guides/ATS_GUIDE_PHASE_B2_ML.md) | 20-26 | 5-8 weeks | 🔴 Pending |
-| **C** | [Production & Maintenance](implementation_guides/ATS_GUIDE_PHASE_C_PRODUCTION.md) | 27-32 | 3-5 weeks | 🔴 Pending |
+| Phase  | Guide                                                                                  | Tasks   | Duration  | Status         |
+| ------ | -------------------------------------------------------------------------------------- | ------- | --------- | -------------- |
+| **A1** | [Setup & Infrastructure](implementation_guides/ATS_GUIDE_PHASE_A1_SETUP.md)            | 1-6     | 1-2 weeks | ✅ **COMPLETE** |
+| **A2** | [Algorithms & Risk Management](implementation_guides/ATS_GUIDE_PHASE_A2_ALGORITHMS.md) | 7-14    | 2-3 weeks | ✅ **COMPLETE** |
+| **A3** | [Trading & Validation](implementation_guides/ATS_GUIDE_PHASE_A3_TRADING.md)            | 15-16.1 | 1 week    | 🔄 Next         |
+| **B1** | [Execution System](implementation_guides/ATS_GUIDE_PHASE_B1_EXECUTION.md)              | 17-19   | 2-3 weeks | 🔴 Pending      |
+| **B2** | [ML Pipeline](implementation_guides/ATS_GUIDE_PHASE_B2_ML.md)                          | 20-26   | 5-8 weeks | 🔴 Pending      |
+| **C**  | [Production & Maintenance](implementation_guides/ATS_GUIDE_PHASE_C_PRODUCTION.md)      | 27-32   | 3-5 weeks | 🔴 Pending      |
 
 ### Progress Tracking
 - **[Implementation Progress](implementation_guides/ATS_IMPLEMENTATION_PROGRESS.md)** - Comprehensive progress tracker with milestones
@@ -429,7 +429,39 @@ python tests/test_liquidity.py              # Liquidity algorithm (7/8 tests)
 # Ready for Phase A3: Trading & Validation
 ```
 
-### 🎯 Current Capabilities
+### � Running the Dashboard
+
+The ATS system includes a comprehensive Streamlit dashboard for real-time monitoring:
+
+#### Option 1: VS Code (Recommended)
+1. Open the project in VS Code
+2. Press `F5` or go to Run → Start Debugging
+3. Select "Streamlit Dashboard" from the configuration dropdown
+4. The dashboard will open in your default browser
+
+#### Option 2: Command Line
+```bash
+# Activate virtual environment
+ats_env\Scripts\activate
+
+# Run dashboard
+streamlit run dashboard.py
+```
+
+#### Option 3: Batch File (Windows)
+```bash
+# Double-click this file in Windows Explorer
+run_dashboard.bat
+```
+
+#### Dashboard Features
+- 📊 **Real-time Signal Monitoring**: Live signal generation tracking
+- 📈 **Performance Metrics**: Win rate, average reward, latency statistics
+- 📉 **Reward Distribution**: Histogram and cumulative charts
+- 🔍 **Signal Analysis**: Spread vs reward correlation analysis
+- ⚡ **System Health**: Circuit breaker status and error monitoring
+
+### �🎯 Current Capabilities
 - **Real-time Signal Generation**: Multi-algorithm confirmation system
 - **Advanced Risk Management**: Slippage analysis, market regime filtering, cooldown management
 - **Performance Monitoring**: Latency compensation and bottleneck identification
