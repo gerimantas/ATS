@@ -16,3 +16,15 @@ SPREAD_THRESHOLD_FILTER = 0.5  # Minimum spread percentage for signal
 # Risk management thresholds
 MIN_DEX_LIQUIDITY = 50000  # Minimum DEX liquidity in USD
 MIN_CEX_VOLUME_24H = 1000000  # Minimum CEX 24h volume in USD
+
+# --- NEW PLUGIN CONFIGURATION ---
+# A list of DEX scanner modules (filenames without .py) to load from the 'scanners/' directory.
+ENABLED_DEX_SCANNERS = [
+    'dexscreener_scanner',
+    # 'birdeye_scanner', # Example of another scanner that can be added later
+]
+
+# A list of CEX verifier modules to load from the 'cex_verifiers/' directory.
+ENABLED_CEX_VERIFIERS = [
+    'coingecko_verifier',
+]

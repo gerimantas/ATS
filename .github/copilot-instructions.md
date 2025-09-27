@@ -33,6 +33,20 @@ signal = Signal(
 )
 ```
 
+### Plugin Architecture (Current Refactoring)
+**Modular plugin system** for DEX scanners and CEX verifiers. Never modify core logic - extend via plugins:
+
+```python
+# scanners/dexscreener_scanner.py - Standardized interface
+async def scan(session: aiohttp.ClientSession) -> List[Dict]:
+    """Returns standardized format: [{'cex_symbol': str, 'dex_pair_address': str, 'score': float}]"""
+    return []
+
+# config.py - Plugin configuration
+ENABLED_DEX_SCANNERS = ['dexscreener_scanner']
+ENABLED_CEX_VERIFIERS = ['coingecko_verifier']
+```
+
 ### Data Connectors Architecture
 **Three-tier data architecture** - never access exchanges directly:
 
@@ -86,22 +100,6 @@ if __name__ == "__main__":
 
 ## Development Workflows
 
-### 3-Phase Development Strategy
-- **Phase A (Tasks 1-16.1)**: Infrastructure & Data Foundation (4-6 weeks)
-  - A1: Setup & Infrastructure (Environment, Database, Data Integration)
-  - A2: Algorithms & Risk Management (Signal algorithms, risk systems)
-  - A3: Trading & Validation (Paper trading, notifications)
-- **Phase B (Tasks 17-26)**: ML & Execution (8-12 weeks)
-  - B1: Execution System (Order management, position tracking)
-  - B2: ML Pipeline (Feature engineering, model training, backtesting)
-- **Phase C (Tasks 27-32)**: Production & Maintenance (3-5 weeks)
-
-### Task-Driven Development
-- Follow sequential task numbering (Task 1 → Task 32)
-- Each task has clear deliverables and acceptance criteria
-- Update `ATS_IMPLEMENTATION_PROGRESS.md` after completing tasks
-- Reference specific implementation guides for detailed instructions
-
 ### Windows 11 Development Environment
 ```powershell
 # Activate environment (required for all Python operations):
@@ -116,6 +114,22 @@ python tests/test_cex_connector.py
 python tests/test_dex_connector.py
 python tests/test_sync_manager.py
 ```
+
+### Task-Driven Development
+- Follow sequential task numbering (Task 1 → Task 32)
+- Each task has clear deliverables and acceptance criteria
+- Update `ATS_IMPLEMENTATION_PROGRESS.md` after completing tasks
+- Reference specific implementation guides for detailed instructions
+
+### 3-Phase Development Strategy
+- **Phase A (Tasks 1-16.1)**: Infrastructure & Data Foundation (4-6 weeks)
+  - A1: Setup & Infrastructure (Environment, Database, Data Integration)
+  - A2: Algorithms & Risk Management (Signal algorithms, risk systems)
+  - A3: Trading & Validation (Paper trading, notifications)
+- **Phase B (Tasks 17-26)**: ML & Execution (8-12 weeks)
+  - B1: Execution System (Order management, position tracking)
+  - B2: ML Pipeline (Feature engineering, model training, backtesting)
+- **Phase C (Tasks 27-32)**: Production & Maintenance (3-5 weeks)
 
 ## Key Implementation Patterns
 
