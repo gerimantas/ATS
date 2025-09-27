@@ -5,6 +5,19 @@ from config import MIN_DEX_LIQUIDITY
 # This is the public API endpoint for searching pairs on the Solana chain that are traded against USD-based tokens.
 DEXSCREENER_SEARCH_URL = "https://api.dexscreener.com/latest/dex/search?q=solana%20usd"
 
+async def _check_cex_symbol_exists(session, symbol):
+    """Quick check if a symbol exists on Binance"""
+    try:
+        symbols_to_try = [f"{symbol}USDT", f"{symbol}USD"]
+        for symbol_pair in symbols_to_try:
+            url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol_pair}"
+            async with session.get(url, timeout=2) as response:
+                if response.status == 200:
+                    return True
+        return False
+    except:
+        return False
+
 async def scan(session: aiohttp.ClientSession):
     """
     Scans Dexscreener for promising pairs on the Solana network, filters them,
@@ -35,7 +48,13 @@ async def scan(session: aiohttp.ClientSession):
                 if pair['quoteToken']['symbol'].upper() not in ['USDC', 'USDT']:
                     continue
 
-                # --- Step 2: Activity Scoring ---
+                symbol = pair['baseToken']['symbol']
+
+                # --- Step 2: Check if symbol exists on CEX ---
+                if not await _check_cex_symbol_exists(session, symbol):
+                    continue  # Skip pairs that don't exist on CEX
+
+                # --- Step 3: Activity Scoring ---
                 price_change_h1 = pair.get('priceChange', {}).get('h1', 0)
                 txns_h1 = pair.get('txns', {}).get('h1', {}).get('buys', 0) + pair.get('txns', {}).get('h1', {}).get('sells', 0)
 
@@ -48,8 +67,13 @@ async def scan(session: aiohttp.ClientSession):
 
                 if score > 0:
                     candidate_pairs.append({
-                        'cex_symbol': pair['baseToken']['symbol'],
+                        'cex_symbol': symbol,
                         'dex_pair_address': pair['pairAddress'],
+                        'dex_data': {
+                            'price': float(pair.get('priceUsd', 0)),
+                            'liquidity': float(pair.get('liquidity', {}).get('usd', 0)),
+                            'volume_h24': float(pair.get('volume', {}).get('h24', 0)),
+                        },
                         'score': score
                     })
 

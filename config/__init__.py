@@ -9,6 +9,10 @@ CEX_URL = "https://api.binance.com/api/v3/ticker/24hr?symbol=SOLUSDT"
 # Polling interval in seconds
 POLLING_INTERVAL_SECONDS = 5
 
+# Scanner configuration
+SCANNER_INTERVAL_SECONDS = 60  # How often to update the watchlist (60 seconds)
+WATCHLIST_SIZE = 10  # Maximum number of pairs to track in watchlist
+
 # Thresholds for signal generation
 MIN_DEX_VOLUME_24H = 1000000  # Minimum DEX 24h volume in USD
 SPREAD_THRESHOLD_FILTER = 0.5  # Minimum spread percentage for signal
