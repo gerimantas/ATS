@@ -130,6 +130,7 @@ async def analyze_pair(session, pair_info):
         print(
             f"  CEX data: price={primary_cex_data.get('price', 'N/A')}, volume_24h={primary_cex_data.get('volume_h24', 'N/A')}"
         )
+
         is_safe, notes = risk_manager.perform_risk_checks(dex_data, primary_cex_data)
         print(f"  Risk check result: {is_safe} - {notes}")
         if is_safe:
