@@ -1,19 +1,33 @@
 import asyncio
+import time  # Add the time import
 from src.data import data_fetcher
 import database_manager
 from config import REWARD_CALCULATION_DELAY_SECONDS, REWARD_TIME_WINDOW_MINUTES
 
-async def calculate_and_store_reward(session, signal_id: int, cex_symbol: str, entry_price: float, signal_type: str):
+
+async def calculate_and_store_reward(
+    session,
+    signal_id: int,
+    cex_symbol: str,
+    entry_price: float,
+    signal_type: str,
+    signal_timestamp,
+):
     """
     Waits for a period, fetches historical price data, calculates the reward score,
     and updates the database.
     """
-    print(f"Analyzer scheduled for signal {signal_id}. Waiting for {REWARD_CALCULATION_DELAY_SECONDS} seconds...")
+    print(
+        f"Analyzer scheduled for signal {signal_id}. Waiting for {REWARD_CALCULATION_DELAY_SECONDS} seconds..."
+    )
     await asyncio.sleep(REWARD_CALCULATION_DELAY_SECONDS)
 
     print(f"Analyzer started for signal {signal_id}. Fetching historical data...")
+    # Convert the signal's timestamp to milliseconds for the API
+    start_time_ms = int(signal_timestamp.timestamp() * 1000)
+
     klines = await data_fetcher.get_cex_historical_klines(
-        session, cex_symbol, limit=REWARD_TIME_WINDOW_MINUTES
+        session, cex_symbol, startTime=start_time_ms, limit=REWARD_TIME_WINDOW_MINUTES
     )
 
     if not klines:
@@ -25,7 +39,7 @@ async def calculate_and_store_reward(session, signal_id: int, cex_symbol: str, e
     high_prices = [float(k[2]) for k in klines]
     low_prices = [float(k[3]) for k in klines]
 
-    if signal_type == 'BUY':
+    if signal_type == "BUY":
         # For a BUY signal, the reward is based on the highest price reached
         max_favorable_price = max(high_prices)
         reward = (max_favorable_price - entry_price) / entry_price
