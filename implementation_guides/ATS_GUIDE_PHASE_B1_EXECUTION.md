@@ -81,7 +81,7 @@ class OrderExecutionEngine:
 ```
 
 #### 17.2 Implement Exchange Integration
-- **Multi-Exchange Support**: Support for Binance, Coinbase Pro, Kraken, etc.
+- **Multi-Exchange Support**: Support for Mexc, Bybit etc.
 - **API Authentication**: Secure API key management and authentication
 - **Connection Management**: Handle connection drops and reconnections
 - **Rate Limiting**: Respect exchange-specific rate limits
