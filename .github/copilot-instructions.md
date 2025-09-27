@@ -37,7 +37,7 @@ signal = Signal(
 **Three-tier data architecture** - never access exchanges directly:
 
 1. **CEXConnector** (`src/data/cex_connector.py`): CCXT Pro for centralized exchanges
-2. **DEXConnector** (`src/data/dex_connector.py`): Birdeye API for decentralized exchanges  
+2. **DEXConnector** (`src/data/dex_connector.py`): Birdeye API for decentralized exchanges
 3. **DataSyncManager** (`src/data/sync_manager.py`): Latency-compensated synchronization
 
 ```python
@@ -131,6 +131,21 @@ Implement these three core detectors in `src/algorithms/`:
 - **Cool-down periods:** 15-minute blocks per trading pair after signals
 - **Latency compensation:** Tighten thresholds during high-latency periods (>200ms)
 
+### Algorithm Implementation Pattern
+```python
+class AlgorithmAnalyzer:
+    def __init__(self, window_seconds: int = 30):
+        self.window_seconds = window_seconds
+        self.signal_cooldowns = {}  # symbol -> last signal time
+        self.cooldown_period = 60   # seconds
+        self.signal_history = deque(maxlen=1000)
+
+    def add_data(self, symbol: str, data: Dict):
+        """Add new data point to analysis window"""
+        # Implementation here
+        pass
+```
+
 ## Technology Stack Expectations
 
 ### Data Sources
@@ -158,10 +173,10 @@ from loguru import logger
 async def process_signal(data: Dict[str, Any]) -> Optional[Signal]:
     """
     Process raw market data into trading signal.
-    
+
     Args:
         data: Raw market data dictionary
-        
+
     Returns:
         Signal object if valid signal generated, None otherwise
     """
