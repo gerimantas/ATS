@@ -29,7 +29,11 @@ MIN_CEX_VOLUME_24H = 1000000  # Minimum CEX 24h volume in USD
 # A list of DEX scanner modules (filenames without .py) to load from the 'scanners/' directory.
 ENABLED_DEX_SCANNERS = [
     "dexscreener_scanner",
-    # 'birdeye_scanner', # Example of another scanner that can be added later
+    "jupiter_scanner",  # Jupiter DEX aggregator scanner
+    "moralis_scanner",  # Moralis multi-chain scanner
+    "coingecko_dex_scanner",  # CoinGecko DEX terminal scanner
+    "defillama_scanner",  # DefiLlama DEX protocols scanner
+    # 'birdeye_scanner',       # Example of another scanner that can be added later
 ]
 
 # A list of CEX verifier modules to load from the 'cex_verifiers/' directory.
