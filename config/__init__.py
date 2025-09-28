@@ -33,6 +33,7 @@ ENABLED_DEX_SCANNERS = [
     "moralis_scanner",  # Moralis multi-chain scanner
     "coingecko_dex_scanner",  # CoinGecko DEX terminal scanner
     "defillama_scanner",  # DefiLlama DEX protocols scanner
+    # 'uniswap_v3_scanner',  # Removed - subgraph endpoints unavailable
     # 'birdeye_scanner',       # Example of another scanner that can be added later
 ]
 
